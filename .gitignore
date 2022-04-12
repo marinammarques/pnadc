@@ -24,24 +24,23 @@ head(pnadc0421)
 class(pnadc0421)
 
 #Manipulação dos dados
-pnadurbano <- pnad19[(pnad19$V1022==1) & (pnad19$V2009>=18) & (pnad19$VD4002==1), ]
+pnadurbano <- pnadc0421[(pnadc0421$V1022==1) & (pnadc0421$V2009>=18) & (pnadc0421$VD4002==1), ]
 # Restrição da amostra para o espaço do domicílio urbano e para OCUPADOS maiores de 18 anos de idade.
 
 View(pnadurbano)
 
 #Gerando dummies
 #Gênero
-dadosPNADc$fem <- ifelse(dadosPNADc$V2007==2,1,0) # 1= Homem e 2= Mulher; Fem= Variável dummy, sendo 1=mulher; 0= homem) 
-summary(dadosPNADc$fem)
-list(dadosPNADc$fem)
+pnadurbano$fem <- ifelse(pnadurbano$V2007==2,1,0) # 1= Homem e 2= Mulher; Fem= Variável dummy, sendo 1=mulher; 0= homem) 
+summary(pnadurbano$fem)
+list(pnadurbano$fem)
 
-dadosPNADc$fem  <- factor(dadosPNADc$fem ,
+pnadurbano$fem  <- factor(pnadurbano$fem ,
                       levels = c(0,1),
                       labels = c("Homem", "Mulher"))
-View(dadosPNADc)
+View(pnadurbano)
 
 #Cor ou raça
-
 pnadurbano$cor.raca <- NA
 i <- which(pnadurbano$V2010 %in% c("1", "3"))
 pnadurbano$cor.raca[i] <-  "Brancos"
