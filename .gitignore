@@ -1,39 +1,130 @@
-# History files
-.Rhistory
-.Rapp.history
+rm(list = ls(all.names = TRUE)) #Limpando os objetos do ambiente
+setwd("G:/Meu Drive/Ciência de dados/PNADC_T")
 
-# Session Data files
-.RData
+library(PNADcIBGE)
+library(survey)
+library(srvyr)
+library(tidyverse)
 
-# User-specific files
-.Ruserdata
+# Importação dos microdados da PNAD Contínua Offline. (4º trimestre -  ano 2021)
+pnadc0421 <- read_pnadc ("PNADC_042021.txt",
+                        "input_PNADC_trimestral.txt")
+                        
+#Definindo o plano amostral complexo
 
-# Example code in package build process
-*-Ex.R
+pnadc0421 <- pnadc_design(pnadc0421)
 
-# Output files from R CMD build
-/*.tar.gz
 
-# Output files from R CMD check
-/*.Rcheck/
+view(pnadc0421)
+summary(pnadc0421)
+is.data.frame(pnadc0421)
+names(pnadc0421)
+dim(pnadc0421)
+head(pnadc0421)
+class(pnadc0421)
 
-# RStudio files
-.Rproj.user/
+#Manipulação dos dados
+pnadurbano <- pnad19[(pnad19$V1022==1) & (pnad19$V2009>=18) & (pnad19$VD4002==1), ]
+# Restrição da amostra para o espaço do domicílio urbano e para OCUPADOS maiores de 18 anos de idade.
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+View(pnadurbano)
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
+#Gerando dummies
+#Gênero
+dadosPNADc$fem <- ifelse(dadosPNADc$V2007==2,1,0) # 1= Homem e 2= Mulher; Fem= Variável dummy, sendo 1=mulher; 0= homem) 
+summary(dadosPNADc$fem)
+list(dadosPNADc$fem)
 
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
+dadosPNADc$fem  <- factor(dadosPNADc$fem ,
+                      levels = c(0,1),
+                      labels = c("Homem", "Mulher"))
+View(dadosPNADc)
 
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
+#Cor ou raça
 
-# R Environment Variables
-.Renviron
+pnadurbano$cor.raca <- NA
+i <- which(pnadurbano$V2010 %in% c("1", "3"))
+pnadurbano$cor.raca[i] <-  "Brancos"
+i <- which(pnadurbano$V2010 %in% c("2", "4"))
+pnadurbano$cor.raca[i] <-  "Negros"
+i <- which(pnadurbano$V2010 %in% c("5", "9"))
+pnadurbano$cor.raca[i] <- "Outros"
+pnadurbano$cor.raca <- ifelse(pnadurbano$cor.raca=="Outros",
+                              NA, pnadurbano$cor.raca)  #Transformando as categorias "Indigenas" e "Ignorados" em missing
+
+#Variável tipo texto;  transformando em categórica
+pnadurbano$cor.raca <- factor(pnadurbano$cor.raca)
+table (pnadurbano$cor.raca)
+
+
+
+#Idosos
+pnadurbano$idosos <-  ifelse(pnadurbano$V2009 >= 65, 1, 0)
+pnadurbano$idosos  <- factor(pnadurbano$idosos ,
+                          levels = c(0,1),
+                          labels = c("Não Idosos", "Idosos"))
+
+pnadurbano$jovens <-  ifelse(pnadurbano$V2009 >= 18 & pnadurbano$V2009 <= 29, 1, 0) 
+pnadurbano$jovens  <- factor(pnadurbano$jovens ,
+                             levels = c(0,1),
+                             labels = c("Não Jovens", "Jovens"))
+table(pnadurbano$jovens)
+
+
+pnadurbano$PIA    <-  ifelse(pnadurbano$V2009 >= 15 & pnadurbano$V2009 <= 64, 1, 0) #População em Idade Ativa
+
+
+dadosPNADc$pea <- ifelse(dadosPNADc$VD4001==2,1,0) # 1= pea e 2= inativa) 
+summary(dadosPNADc$pea)
+list(dadosPNADc$pea)
+
+dadosPNADc$pea  <- factor(dadosPNADc$pea ,
+                          levels = c(0,1),
+                          labels = c("Inativa", "PEA"))
+
+dadosPNADc$emprego <- ifelse(dadosPNADc$VD4002==2,1,0) # 1= pessoas ocupadas e 2= pessoas desocupadas) 
+summary(dadosPNADc$emprego)
+list(dadosPNADc$emprego)
+
+dadosPNADc$emprego  <- factor(dadosPNADc$emprego ,
+                          levels = c(0,1),
+                          labels = c("Desempregados", "Ocupados"))
+
+#Status na força de trabalho
+
+dadosPNADc$statusft <- NA
+i <- which(pnadurbano$emprego %in% c("Ocupados"))
+dadosPNADc$statusft[i] <-  "Ocupados"
+i <- which(pnadurbano$desemprego %in% c("Desempregados"))
+dadosPNADc$statusft[i] <-  "Desempregados"
+i <- which(pnadurbano$pea %in% c("Inativa"))
+dadosPNADc$statusft[i] <- "Inativo"
+
+#Variável tipo texto;  transformando em categórica
+dadosPNADc$statusft <- factor(dadosPNADc$statusft)
+table (dadosPNADc$statusft)
+
+#Regiões
+pnadurbano$regioes <- cut(pnadurbano$UF, breaks = c(11, 17, 29, 35, 43, 53),
+                labels = c("Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste"),
+                include.lowest = T, right = T)
+table(pnadurbano$regioes)
+
+#Grupos de idade
+pnadurbano$grupid <- cut(pnadurbano$V2009, breaks = c(18,29,54,120),
+                          labels = c("18-29 anos", "30-54anos", "mais de 55 anos"),
+                          include.lowest = T, right = T)
+table(pnadurbano$grupid)
+
+
+#Jornada de Trabalho
+pnadurbano$jornada <- cut(pnadurbano$V4039, breaks = c(1, 10, 20, 30, 40, 50, 120),
+                          labels = c("1-10 h", "11-20 h", "21-30 h", "31-40 h", "41-50 h", "+50 h"),
+                          include.lowest = T, right = T)
+table(pnadurbano$jornada)
+
+
+# para afins acadêmicos iremos excluir todos os valores de rendimento maiores que 50.000
+pnadurbano$VD4016 <- ifelse(pnadurbano$VD4016>50000,
+                              NA, pnadurbano$VD4016)
+
